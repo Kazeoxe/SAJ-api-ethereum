@@ -54,11 +54,6 @@ public class AuthController {
             return ResponseEntity.badRequest().body(new MessageResponse("Email déjà utilisé"));
         }
 
-        // Vérification si le username existe déjà
-        if (userRepository.existsByUsername(registerRequest.getUsername())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Nom d'utilisateur déjà utilisé"));
-        }
-
         // Validation du mot de passe (au moins 8 caractères)
         if (registerRequest.getPassword().length() < 8) {
             return ResponseEntity.badRequest()
@@ -67,7 +62,6 @@ public class AuthController {
 
         // Création du nouvel utilisateur
         User user = new User();
-        user.setUsername(registerRequest.getUsername());
         user.setEmail(registerRequest.getEmail());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
 
@@ -75,7 +69,7 @@ public class AuthController {
         Role userRole = roleRepository.findByName("USER")
                 .orElseGet(() -> {
                     Role newRole = new Role();
-                    newRole.setName("USER");
+                    newRole.setName("ROLE_USER");
                     return roleRepository.save(newRole);
                 });
         user.setRole(userRole);

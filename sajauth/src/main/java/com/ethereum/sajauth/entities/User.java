@@ -13,7 +13,6 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
     private String username;
 
     @Column(nullable = false)
@@ -23,6 +22,8 @@ public class User {
     private String email;
 
     private int wallet;
+
+    private boolean enabled;
 
     @ManyToOne
     @JoinColumn(name = "role")
