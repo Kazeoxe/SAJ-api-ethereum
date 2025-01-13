@@ -11,7 +11,7 @@ import {
 } from "chart.js";
 // import API from "services/api";
 import { Line } from "react-chartjs-2";
-import API from "services/api";
+//import API from "services/api";
 
 ChartJS.register(
     CategoryScale,
@@ -38,23 +38,24 @@ const Dashboard = () => {
         const fetchData = async () => {
             try {
                 setIsLoading(true);
-                const response = await API.get("/wallet/get_data");
-                setData(response.data);
+                // const response = await API.get("/wallet/get_data");
+                // setData(response.data);
 
-                // const fakeData: PriceEvolution[] = [
-                //     { date: "2025-01-01", price: 1000 },
-                //     { date: "2025-01-02", price: 1020 },
-                //     { date: "2025-01-03", price: 980 },
-                //     { date: "2025-01-04", price: 1050 },
-                //     { date: "2025-01-05", price: 1100 },
-                //     { date: "2025-01-06", price: 1080 },
-                //     { date: "2025-01-07", price: 1150 },
-                // ];
-                // await new Promise((resolve) => setTimeout(resolve, 1000));
-                // setData(fakeData);
+                const fakeData: PriceEvolution[] = [
+                    { date: "2025-01-01", price: 1000 },
+                    { date: "2025-01-02", price: 1020 },
+                    { date: "2025-01-03", price: 980 },
+                    { date: "2025-01-04", price: 1050 },
+                    { date: "2025-01-05", price: 1100 },
+                    { date: "2025-01-06", price: 1080 },
+                    { date: "2025-01-07", price: 1150 },
+                ];
+                await new Promise((resolve) => setTimeout(resolve, 1000));
+                setData(fakeData);
                 setError(null);
             } catch (err) {
                 setError("Failed to fetch data. Please try again later.");
+                console.error(err);
             } finally {
                 setIsLoading(false);
             }

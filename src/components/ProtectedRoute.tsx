@@ -5,7 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 const ProtectedRoute = ({ children }: { children: React.ReactElement }) => {
   const { user } = useAuth();
 
-  if (!user) {
+  if (user) {
     return <Navigate to="/login" />;
   }
 
