@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 @Entity
@@ -23,7 +25,11 @@ public class User {
 
     private int wallet;
 
-    private boolean enabled;
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean enabled = false;
+
+    private String verificationToken;
+    private LocalDateTime verificationTokenExpiry;
 
     @ManyToOne
     @JoinColumn(name = "role")

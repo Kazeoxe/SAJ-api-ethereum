@@ -6,7 +6,10 @@ import com.ethereum.sajauth.entities.User;
 import com.ethereum.sajauth.entities.Role;
 import com.ethereum.sajauth.repositories.UserRepository;
 import com.ethereum.sajauth.repositories.RoleRepository;
+import com.ethereum.sajauth.services.EmailService;
+import com.ethereum.sajauth.services.VerificationTokenService;
 import lombok.Data;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -25,6 +28,8 @@ public class AuthController {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
+    private final VerificationTokenService verificationTokenService;
+    private final EmailService emailService;
 
     private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@(.+)$";
     private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
@@ -34,12 +39,15 @@ public class AuthController {
             UserRepository userRepository,
             RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
-            JwtUtil jwtUtil) {
+            JwtUtil jwtUtil, VerificationTokenService verificationTokenService,
+            EmailService emailService) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
+        this.verificationTokenService = verificationTokenService;
+        this.emailService = emailService;
     }
 
     @PostMapping("/register")
@@ -64,6 +72,7 @@ public class AuthController {
         User user = new User();
         user.setEmail(registerRequest.getEmail());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
+        user.setEnabled(false);
 
         // Attribution du rôle USER par défaut
         Role userRole = roleRepository.findByName("USER")
@@ -74,13 +83,18 @@ public class AuthController {
                 });
         user.setRole(userRole);
 
-        // Sauvegarde de l'utilisateur
-        userRepository.save(user);
+        verificationTokenService.createVerificationToken(user);
 
-        // Génération du token JWT
-        String jwt = jwtUtil.generateToken(user.getUsername());
+        try {
+            emailService.sendVerificationEmail(user, user.getVerificationToken());
+            userRepository.save(user);
+        } catch (Exception e) {
+            // Log l'erreur et retourner un message approprié
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new MessageResponse("Erreur lors de l'envoi de l'email de confirmation"));
+        }
 
-        return ResponseEntity.ok(new RegisterResponse(jwt));
+        return ResponseEntity.ok(new MessageResponse("Un email de confirmation vous a été envoyé"));
     }
 
     @PostMapping("/login")
@@ -94,6 +108,13 @@ public class AuthController {
 
         String jwt = jwtUtil.generateToken(loginRequest.getEmail());
         return ResponseEntity.ok(new LoginResponse(jwt));
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<?> verifyAccount(@RequestParam String token) {
+        return verificationTokenService.validateToken(token)
+                .map(user -> ResponseEntity.ok(new MessageResponse("Compte activé avec succès")))
+                .orElse(ResponseEntity.badRequest().body(new MessageResponse("Token invalide ou expiré")));
     }
 }
 
