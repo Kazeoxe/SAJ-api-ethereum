@@ -8,12 +8,16 @@ import com.ethereum.sajauth.repositories.UserRepository;
 import com.ethereum.sajauth.repositories.RoleRepository;
 import com.ethereum.sajauth.services.EmailService;
 import com.ethereum.sajauth.services.VerificationTokenService;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import lombok.Data;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -99,15 +103,32 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        loginRequest.getEmail(),
-                        loginRequest.getPassword()
-                )
-        );
+        try {
+            User user = userRepository.findByEmail(loginRequest.getEmail())
+                    .orElseThrow(() -> new UsernameNotFoundException("Utilisateur non trouvé"));
 
-        String jwt = jwtUtil.generateToken(loginRequest.getEmail());
-        return ResponseEntity.ok(new LoginResponse(jwt));
+            if (!user.isEnabled()) {
+                return ResponseEntity
+                        .status(HttpStatus.FORBIDDEN)
+                        .body(new MessageResponse("Veuillez confirmer votre email avant de vous connecter"));
+            }
+
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            loginRequest.getEmail(),
+                            loginRequest.getPassword()
+                    )
+            );
+
+            String jwt = jwtUtil.generateToken(user.getUsername());
+
+            return ResponseEntity.ok(new LoginResponse(jwt));
+
+        } catch (UsernameNotFoundException | BadCredentialsException e) {
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body(new MessageResponse("Email ou mot de passe incorrect"));
+        }
     }
 
     @GetMapping("/verify-email")
@@ -115,6 +136,11 @@ public class AuthController {
         return verificationTokenService.validateToken(token)
                 .map(user -> ResponseEntity.ok(new MessageResponse("Compte activé avec succès")))
                 .orElse(ResponseEntity.badRequest().body(new MessageResponse("Token invalide ou expiré")));
+    }
+
+    @GetMapping("/validate-token")
+    public ResponseEntity<?> validateToken() {
+        return ResponseEntity.ok().build();
     }
 }
 
