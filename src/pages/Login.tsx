@@ -21,7 +21,7 @@ const Login = () => {
         }
     };
 
-    if (!user) {
+    if (user) {
         return <Navigate to="/dashboard" />;
     }
 

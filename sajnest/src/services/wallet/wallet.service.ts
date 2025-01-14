@@ -57,8 +57,6 @@ export class WalletService implements IWalletService {
       return [];
     }
     
-    // Simulons que l'adresse du wallet est un symbole crypto pour cet exemple
-    // En production, vous devrez implémenter la logique spécifique à votre blockchain
     return this.getPriceHistory('ETH');
   }
 

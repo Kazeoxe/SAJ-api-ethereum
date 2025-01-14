@@ -1,5 +1,5 @@
-import { Controller, Get, Put, Body, UseGuards, BadRequestException } from '@nestjs/common';
-import { JwtAuthGuard } from '../auth/jwt.guard';
+import { Controller, Get, Put, Body, UseGuards, Logger, BadRequestException } from '@nestjs/common';
+import { AuthGuard } from '../auth/auth.guard';
 import { IWalletService } from './types';
 import { User } from '../decorators/user.decorator';
 
@@ -13,8 +13,10 @@ interface WalletUpdateDto {
 }
 
 @Controller('wallet')
-@UseGuards(JwtAuthGuard)
+@UseGuards(AuthGuard)
 export class WalletController {
+  private readonly logger = new Logger(WalletController.name);
+  
   constructor(private walletService: IWalletService) {}
 
   @Get('get_wallet')
@@ -32,17 +34,23 @@ export class WalletController {
     @User() user: UserRequest,
     @Body() walletData: WalletUpdateDto
   ) {
+    this.logger.debug(`Received update wallet request for user ${user.userId}`);
+    this.logger.debug('Wallet data:', walletData);
+
     if (!walletData.wallet || walletData.wallet.trim().length === 0) {
       throw new BadRequestException('Wallet address is required');
     }
 
     try {
       const updated = await this.walletService.updateWallet(user.userId, walletData.wallet);
+      this.logger.debug('Wallet updated successfully:', updated);
+      
       return { 
         message: 'Wallet updated successfully', 
         wallet: updated.wallet 
       };
     } catch (error) {
+      this.logger.error('Failed to update wallet:', error);
       throw new BadRequestException('Failed to update wallet');
     }
   }

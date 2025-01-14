@@ -9,7 +9,7 @@
     "@nestjs/core": "^10.4.15",
     "@nestjs/jwt": "^10.0.2",
     "@nestjs/passport": "^10.0.3",
-    "@nestjs/typeorm": "^10.0.2",
+    "@types/react-router-dom": "^5.3.3",
     "axios": "^1.7.9",
     "chart.js": "^4.4.7",
     "cra-template-typescript": "1.2.0",
@@ -20,12 +20,13 @@
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.1",
     "react-scripts": "5.0.1",
-    "react-toastify": "^11.0.2",
-    "typeorm": "^0.3.20"
+    "react-toastify": "^11.0.2"
   },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
