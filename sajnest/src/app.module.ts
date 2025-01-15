@@ -17,7 +17,7 @@ import { User } from './services/user/user.entity';
       password: process.env.DB_PASSWORD ,
       database: process.env.DB_NAME ,
       entities: [User],
-      synchronize: true, // À désactiver en production
+      synchronize: false,
       logging: true, // Pour voir les requêtes SQL pendant le développement
     }),
     HttpModule,

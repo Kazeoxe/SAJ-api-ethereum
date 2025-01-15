@@ -50,8 +50,8 @@ export class AuthGuard implements CanActivate {
     
     // Simulate authenticated user
     request.user = {
-      userId: "8",  // Test ID
-      username: "test@example.com"
+      userId: "1",  // Test ID
+      username: "size4567@gmail.com"
     };
 
     this.logger.debug('Added mock user to request:', request.user);
