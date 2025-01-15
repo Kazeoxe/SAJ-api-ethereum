@@ -1,8 +1,13 @@
 import axios from "axios";
 
-const API = axios.create({
-    baseURL: process.env.REACT_APP_API_BASE_URL || "http://localhost:5000/api/v1",
-    withCredentials: true, // Include cookies (for refreshToken)
+const AuthAPI = axios.create({
+    baseURL: process.env.REACT_APP_AUTH_API_URL || "http://localhost:8080/",
+    withCredentials: true,
+});
+
+const WalletAPI = axios.create({
+    baseURL: process.env.REACT_APP_WALLET_API_URL || "http://localhost:5000/api/v1/",
+    withCredentials: true,
 });
 
 let isRefreshing = false;
@@ -23,66 +28,96 @@ const addRefreshSubscriber = (callback: (token: string) => void) => {
     refreshSubscribers.push(callback);
 };
 
-API.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem("token");
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => Promise.reject(error)
-);
+[AuthAPI, WalletAPI].forEach(api => {
+    api.interceptors.request.use(
+        (config) => {
+            const token = TokenService.getToken();
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+            return config;
+        },
+        (error) => Promise.reject(error)
+    );
 
-API.interceptors.response.use(
-    (response) => {
-        return response;
-    },
-    async (error) => {
-        const originalRequest = error.config;
-        if (error.response.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
-            if (isRefreshing) {
-                return new Promise((resolve) => {
-                    addRefreshSubscriber((token) => {
-                        originalRequest.headers.Authorization = `Bearer ${token}`;
-                        resolve(API(originalRequest));
+    api.interceptors.response.use(
+        (response) => response,
+        async (error) => {
+            const originalRequest = error.config;
+            if (error.response?.status === 401 && !originalRequest._retry) {
+                originalRequest._retry = true;
+                if (isRefreshing) {
+                    return new Promise((resolve) => {
+                        addRefreshSubscriber((token) => {
+                            originalRequest.headers.Authorization = `Bearer ${token}`;
+                            resolve(api(originalRequest));
+                        });
                     });
-                });
+                }
+
+                isRefreshing = true;
+
+                try {
+                    const { data } = await AuthAPI.post(
+                        "/auth/refresh",
+                        {},
+                        { withCredentials: true }
+                    );
+
+                    const { accessToken } = data;
+                    TokenService.setToken(accessToken);
+                    // 
+
+                    [AuthAPI, WalletAPI].forEach(instance => {
+                        instance.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
+                    });
+                    
+                    onRefreshed(accessToken);
+                    isRefreshing = false;
+
+                    return api(originalRequest);
+                } catch (err: any) {
+                    console.error("Token refresh failed:", err.message);
+                    TokenService.removeToken();
+                    isRefreshing = false;
+                    await new Promise((resolve) => setTimeout(resolve, 2000));
+                    window.location.href = "/login";
+                    return Promise.reject(err);
+                }
             }
-
-            isRefreshing = true;
-
-            try {
-                const { data } = await axios.post(
-                    `${API.defaults.baseURL}/auth/refresh`,
-                    {}, // No need to send data, cookies handle the refreshToken
-                    { withCredentials: true } // Ensure cookies are sent
-                );
-
-                const { accessToken } = data;
-                TokenService.setToken(accessToken);
-
-                API.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
-                onRefreshed(accessToken);
-
-                isRefreshing = false;
-
-                return API(originalRequest);
-            } catch (err: any) {
-                console.error("Token refresh failed:", err.message);
-
-                TokenService.removeToken();
-                isRefreshing = false;
-
-                // wait for 15 seconds 
-                await new Promise((resolve) => setTimeout(resolve, 25000));
-                window.location.href = "/login";
-            }
+            return Promise.reject(error);
         }
+    );
+});
 
-        return Promise.reject(error);
+const API = {
+    
+    auth: {
+        login: (data: any) => AuthAPI.post("/auth/login", data),
+        register: (data: any) => AuthAPI.post("/auth/register", data),
+        verifyEmail: (data: any) => AuthAPI.post("/auth/verify-email", data),
+        refresh: () => AuthAPI.post("/auth/refresh"),
+        logout: () => AuthAPI.delete("/auth/logout"),
+    },
+    
+    wallet: {
+        getWallet: () => WalletAPI.get("/wallet/get_wallet"),
+        updateWallet: (data: any) => WalletAPI.put("/wallet/update_wallet", data),
+        getWalletData: () => WalletAPI.get("/wallet/get_data"),
+    },
+    
+    get: (url: string) => {
+        if (url.startsWith("/auth")) return AuthAPI.get(url);
+        return WalletAPI.get(url);
+    },
+    post: (url: string, data?: any) => {
+        if (url.startsWith("/auth")) return AuthAPI.post(url, data);
+        return WalletAPI.post(url, data);
+    },
+    put: (url: string, data?: any) => {
+        if (url.startsWith("/auth")) return AuthAPI.put(url, data);
+        return WalletAPI.put(url, data);
     }
-);
+};
 
 export default API;
