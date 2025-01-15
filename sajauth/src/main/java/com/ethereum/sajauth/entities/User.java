@@ -23,7 +23,7 @@ public class User {
     @Column(unique = true, nullable = false)
     private String email;
 
-    private int wallet;
+    private String wallet;
 
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean enabled = false;
