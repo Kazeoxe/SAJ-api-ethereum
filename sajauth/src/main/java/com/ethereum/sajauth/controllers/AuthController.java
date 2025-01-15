@@ -7,10 +7,11 @@ import com.ethereum.sajauth.entities.Role;
 import com.ethereum.sajauth.repositories.UserRepository;
 import com.ethereum.sajauth.repositories.RoleRepository;
 import com.ethereum.sajauth.services.EmailService;
+import com.ethereum.sajauth.services.UserService;
+import com.ethereum.sajauth.services.UserTokenService;
 import com.ethereum.sajauth.services.VerificationTokenService;
-import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
-import lombok.Data;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -31,27 +32,34 @@ public class AuthController {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
     private final VerificationTokenService verificationTokenService;
     private final EmailService emailService;
+    private final UserTokenService userTokenService;
+    private final UserService userService;
 
     private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@(.+)$";
     private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
+    private static final String PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\W_]).{8,}$";
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile(PASSWORD_REGEX);
+    private final JwtUtil jwtUtil;
 
     public AuthController(
             AuthenticationManager authenticationManager,
             UserRepository userRepository,
             RoleRepository roleRepository,
             PasswordEncoder passwordEncoder,
-            JwtUtil jwtUtil, VerificationTokenService verificationTokenService,
-            EmailService emailService) {
+            VerificationTokenService verificationTokenService,
+            EmailService emailService, UserTokenService userTokenService,
+            UserService userService, JwtUtil jwtUtil) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.passwordEncoder = passwordEncoder;
-        this.jwtUtil = jwtUtil;
         this.verificationTokenService = verificationTokenService;
         this.emailService = emailService;
+        this.userTokenService = userTokenService;
+        this.userService = userService;
+        this.jwtUtil = jwtUtil;
     }
 
     @PostMapping("/register")
@@ -67,9 +75,9 @@ public class AuthController {
         }
 
         // Validation du mot de passe (au moins 8 caractères)
-        if (registerRequest.getPassword().length() < 8) {
+        if (!PASSWORD_PATTERN.matcher(registerRequest.getPassword()).matches()) {
             return ResponseEntity.badRequest()
-                    .body(new MessageResponse("Le mot de passe doit contenir au moins 8 caractères"));
+                    .body(new MessageResponse("Le mot de passe doit contenir au moins 8 caractères, minuscule, majuscule, chiffre et caractère spécial"));
         }
 
         // Création du nouvel utilisateur
@@ -102,7 +110,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         try {
             User user = userRepository.findByEmail(loginRequest.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("Utilisateur non trouvé"));
@@ -120,10 +128,9 @@ public class AuthController {
                     )
             );
 
-            String jwt = jwtUtil.generateToken(user.getUsername());
+            TokenResponse userTokens = userTokenService.createUserTokens(user, response);
 
-            return ResponseEntity.ok(new LoginResponse(jwt));
-
+            return ResponseEntity.ok(new LoginResponse(userTokens.getAccessToken(), user.getId()));
         } catch (UsernameNotFoundException | BadCredentialsException e) {
             return ResponseEntity
                     .status(HttpStatus.UNAUTHORIZED)
@@ -141,6 +148,23 @@ public class AuthController {
     @GetMapping("/validate-token")
     public ResponseEntity<?> validateToken() {
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/refresh-token")
+    public ResponseEntity<?> refreshToken(@CookieValue("refreshToken") String refreshToken, HttpServletResponse response) {
+        try {
+            String email = jwtUtil.extractClaims(refreshToken).getSubject();
+
+            if (!jwtUtil.validateToken(refreshToken, email))
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Token invalide"));
+
+            User user = userService.getUserFromToken(refreshToken);
+            TokenResponse userTokens = userTokenService.createUserTokens(user, response);
+
+            return ResponseEntity.ok(new LoginResponse(userTokens.getAccessToken(), user.getId()));
+        } catch (ExpiredJwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Token expiré"));
+        }
     }
 }
 
