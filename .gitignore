@@ -7,6 +7,8 @@
 /sajnest/node_modules
 /sajnest/build
 
+/sajnest/.env
+
 
 # Logs
 logs

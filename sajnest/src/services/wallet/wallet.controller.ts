@@ -1,6 +1,6 @@
 import { Controller, Get, Put, Body, UseGuards, Logger, BadRequestException } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
-import { IWalletService } from './types';
+import { WalletService } from './wallet.service';
 import { User } from '../decorators/user.decorator';
 
 interface UserRequest {
@@ -17,7 +17,7 @@ interface WalletUpdateDto {
 export class WalletController {
   private readonly logger = new Logger(WalletController.name);
   
-  constructor(private walletService: IWalletService) {}
+  constructor(private walletService: WalletService) {}  // Type modifié ici
 
   @Get('get_wallet')
   async getWallet(@User() user: UserRequest) {

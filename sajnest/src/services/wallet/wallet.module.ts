@@ -8,18 +8,10 @@ import { Wallet } from './wallet.entity';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Wallet]),
-    HttpModule.register({
-      timeout: 5000,
-      maxRedirects: 5,
-    }),
+    HttpModule
   ],
   controllers: [WalletController],
-  providers: [
-    {
-      provide: 'IWalletService',
-      useClass: WalletService,
-    },
-  ],
-  exports: ['IWalletService'],
+  providers: [WalletService], 
+  exports: [WalletService]     
 })
 export class WalletModule {}
