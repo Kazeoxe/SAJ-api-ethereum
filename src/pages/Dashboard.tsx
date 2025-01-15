@@ -36,7 +36,7 @@ const Dashboard = () => {
         const fetchData = async () => {
             try {
                 setIsLoading(true);
-                const response = await API.get("/wallet/get_data");
+                const response = await API.wallet.getWalletData();
                 setData(response.data);
                 setError(null);
             } catch (err) {

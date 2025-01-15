@@ -17,7 +17,7 @@ interface WalletUpdateDto {
 export class WalletController {
   private readonly logger = new Logger(WalletController.name);
   
-  constructor(private walletService: WalletService) {}  // Type modifié ici
+  constructor(private walletService: WalletService) {}  
 
   @Get('get_wallet')
   async getWallet(@User() user: UserRequest) {
@@ -34,13 +34,19 @@ export class WalletController {
     @User() user: UserRequest,
     @Body() walletData: WalletUpdateDto
   ) {
-    this.logger.debug(`Received update wallet request for user ${user.userId}`);
+    this.logger.debug(`User from token: ${JSON.stringify(user)}`);
+    this.logger.debug(`Received update wallet request for user ${user?.userId}`);
     this.logger.debug('Wallet data:', walletData);
-
+  
+    if (!user?.userId) {
+      this.logger.error('No user ID found in request');
+      throw new BadRequestException('User not authenticated');
+    }
+  
     if (!walletData.wallet || walletData.wallet.trim().length === 0) {
       throw new BadRequestException('Wallet address is required');
     }
-
+  
     try {
       const updated = await this.walletService.updateWallet(user.userId, walletData.wallet);
       this.logger.debug('Wallet updated successfully:', updated);

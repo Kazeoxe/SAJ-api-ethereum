@@ -7,7 +7,7 @@ const VerifyEmail = () => {
     const verifyEmail = async () => {
         try {
             const token = window.location.pathname.split("/").pop();
-            const { data } = await API.post("/auth/verify-email", { token });
+            const { data } = await API.auth.verifyEmail({ token });
             setMessage(data.message);
         } catch (error) {
             setMessage("Email verification failed.");

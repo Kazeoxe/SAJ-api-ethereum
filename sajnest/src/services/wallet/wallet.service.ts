@@ -1,8 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Wallet } from './wallet.entity';
-import { IWalletService, IWalletResponse } from './types';
+import { User } from '../user/user.entity';
 import axios from 'axios';
 
 interface CryptoDataPoint {
@@ -17,43 +16,45 @@ interface CryptoApiResponse {
 }
 
 @Injectable()
-export class WalletService implements IWalletService {
+export class WalletService {
+  private readonly logger = new Logger(WalletService.name);
+  
   constructor(
-    @InjectRepository(Wallet)
-    private walletRepository: Repository<Wallet>
+    @InjectRepository(User)
+    private userRepository: Repository<User>
   ) {}
 
-  private transformToResponse(wallet: Wallet): IWalletResponse {
-    return {
-      id: wallet.id,
-      userId: wallet.userId,
-      wallet: wallet.wallet,
-      createdAt: wallet.createdAt
-    };
+  async getWallet(userId: string): Promise<any> {
+    this.logger.debug(`Fetching wallet for user ${userId}`);
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    this.logger.debug('User found:', user);
+    return { wallet: user?.wallet || '' };
   }
 
-  async getWallet(userId: string): Promise<IWalletResponse | null> {
-    const wallet = await this.walletRepository.findOne({ where: { userId } });
-    return wallet ? this.transformToResponse(wallet) : null;
-  }
+  async updateWallet(userId: string, walletAddress: string): Promise<any> {
+    this.logger.debug(`Updating wallet for user ${userId} with address ${walletAddress}`);
 
-  async updateWallet(userId: string, walletAddress: string): Promise<IWalletResponse> {
-    let wallet = await this.walletRepository.findOne({ where: { userId } });
-    if (!wallet) {
-      wallet = this.walletRepository.create({ 
-        userId, 
-        wallet: walletAddress 
-      });
-    } else {
-      wallet.wallet = walletAddress;
+    let user = await this.userRepository.findOne({ where: { id: userId } });
+    
+    if (!user) {
+      this.logger.error('User not found');
+      throw new Error('User not found');
     }
-    const savedWallet = await this.walletRepository.save(wallet);
-    return this.transformToResponse(savedWallet);
+
+    try {
+      user.wallet = walletAddress;
+      const savedUser = await this.userRepository.save(user);
+      this.logger.debug('Wallet updated successfully:', savedUser);
+      return { wallet: savedUser.wallet };
+    } catch (error) {
+      this.logger.error('Error updating wallet:', error);
+      throw error;
+    }
   }
 
   async getWalletHistory(userId: string) {
-    const wallet = await this.getWallet(userId);
-    if (!wallet || !wallet.wallet) {
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user?.wallet) {
       return [];
     }
     

@@ -7,17 +7,19 @@ const Profile = () => {
     const [success, setSuccess] = useState<string>("");
 
     useEffect(() => {
-        // const fetchWallet = async () => {
-        //     try {
-        //         const { data } = await API.get("/wallet/get_wallet");
-        //         setWallet(data.wallet);
-        //     } catch (error) {
-        //         console.error("Failed to fetch wallet:", error);
-        //         setError("Failed to fetch wallet");
-        //     }
-        // };
+        const fetchWallet = async () => {
+            try {
+                // Utiliser la méthode spécifique au wallet
+                const { data } = await API.wallet.getWallet();
+                console.log("Get wallet response:", data);
+                setWallet(data.wallet);
+            } catch (error) {
+                console.error("Failed to fetch wallet:", error);
+                setError("Failed to fetch wallet");
+            }
+        };
 
-        //fetchWallet();
+        fetchWallet();
     }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -26,11 +28,9 @@ const Profile = () => {
         setSuccess("");
         
         try {
-            console.log("Sending wallet update:", { wallet });  // Debug log
-
-            const response = await API.put("/wallet/update_wallet", { wallet });
+            const response = await API.wallet.updateWallet({ wallet });
+            console.log("Update wallet response:", response);
             
-            console.log("Update response:", response);  // Debug log
             setSuccess("Wallet updated successfully");
         } catch (error: any) {
             console.error("Failed to update wallet:", error.response || error);

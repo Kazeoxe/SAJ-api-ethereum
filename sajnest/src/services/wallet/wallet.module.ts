@@ -1,17 +1,16 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { HttpModule } from '@nestjs/axios';
 import { WalletController } from './wallet.controller';
 import { WalletService } from './wallet.service';
-import { Wallet } from './wallet.entity';
+import { User } from '../user/user.entity';
+import { AuthGuard } from '../auth/auth.guard';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Wallet]),
-    HttpModule
+    TypeOrmModule.forFeature([User])
   ],
   controllers: [WalletController],
-  providers: [WalletService], 
-  exports: [WalletService]     
+  providers: [WalletService, AuthGuard],
+  exports: [WalletService]
 })
 export class WalletModule {}

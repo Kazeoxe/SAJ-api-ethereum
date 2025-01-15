@@ -7,10 +7,16 @@ const Navbar = () => {
     const { user, logout } = useAuth();
 
     const handleLogout = async () => {
-        await API.delete("/auth/logout");
+    try {
+        await API.auth.logout();
+        logout();
+        localStorage.removeItem("token");
+    } catch (error) {
+        console.error('Logout failed:', error);
         logout();
         localStorage.removeItem("token");
     }
+}
 
     return (
         <nav className="bg-gray-800 text-white p-4 flex justify-between">
