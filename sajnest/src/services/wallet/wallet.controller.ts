@@ -4,7 +4,7 @@ import { WalletService } from './wallet.service';
 import { User } from '../decorators/user.decorator';
 
 interface UserRequest {
-  userId: string;
+  userId: string; // Reste en string car c'est ce que nous envoie l'AuthGuard
   username: string;
 }
 
