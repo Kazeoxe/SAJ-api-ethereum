@@ -1,15 +1,7 @@
 package com.ethereum.sajauth;
 
-import com.ethereum.sajauth.DTO.TokenResponse;
-import com.ethereum.sajauth.entities.User;
-import com.ethereum.sajauth.enums.JwtTokenEnum;
-import com.ethereum.sajauth.services.UserService;
-import com.ethereum.sajauth.services.UserTokenService;
-import com.ethereum.sajauth.utils.CookieUtils;
-import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;

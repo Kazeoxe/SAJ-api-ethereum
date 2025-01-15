@@ -16,6 +16,7 @@ import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailException;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -27,7 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.regex.Pattern;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/v1/auth")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -141,8 +142,8 @@ public class AuthController {
     }
 
     @GetMapping("/verify-email")
-    public ResponseEntity<?> verifyAccount(@RequestParam String token) {
-        return verificationTokenService.validateToken(token)
+    public ResponseEntity<?> verifyAccount(@RequestBody VerifyAccountRequest request) {
+        return verificationTokenService.validateToken(request.getToken())
                 .map(user -> ResponseEntity.ok(new MessageResponse("Compte activé avec succès")))
                 .orElse(ResponseEntity.badRequest().body(new MessageResponse("Token invalide ou expiré")));
     }

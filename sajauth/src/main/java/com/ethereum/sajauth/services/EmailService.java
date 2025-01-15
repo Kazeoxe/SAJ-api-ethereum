@@ -2,6 +2,7 @@ package com.ethereum.sajauth.services;
 
 import com.ethereum.sajauth.entities.User;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ public class EmailService {
         this.emailSender = emailSender;
     }
 
-    public void sendVerificationEmail(User user, String token) {
+    public void sendVerificationEmail(User user, String token) throws MailException {
         String verificationUrl = frontendUrl + "/verify-email/" + token;
 
         String emailContent = """

@@ -31,7 +31,6 @@ public class VerificationTokenService {
         String token = generateVerificationToken();
         user.setVerificationToken(token);
         user.setVerificationTokenExpiry(LocalDateTime.now().now().plusHours(tokenExpirationHours));
-        userRepository.save(user);
     }
 
     public Optional<User> validateToken(String token) {
