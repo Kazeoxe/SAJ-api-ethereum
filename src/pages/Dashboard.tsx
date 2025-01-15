@@ -9,9 +9,8 @@ import {
     Tooltip,
     Legend,
 } from "chart.js";
-// import API from "services/api";
 import { Line } from "react-chartjs-2";
-import API from "services/api";
+import API from "../services/api";
 
 ChartJS.register(
     CategoryScale,
@@ -28,7 +27,6 @@ interface PriceEvolution {
     price: number;
 }
 
-
 const Dashboard = () => {
     const [data, setData] = useState<PriceEvolution[]>([]);
     const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -38,23 +36,12 @@ const Dashboard = () => {
         const fetchData = async () => {
             try {
                 setIsLoading(true);
-                const response = await API.get("/wallet/get_data");
+                const response = await API.wallet.getWalletData();
                 setData(response.data);
-
-                // const fakeData: PriceEvolution[] = [
-                //     { date: "2025-01-01", price: 1000 },
-                //     { date: "2025-01-02", price: 1020 },
-                //     { date: "2025-01-03", price: 980 },
-                //     { date: "2025-01-04", price: 1050 },
-                //     { date: "2025-01-05", price: 1100 },
-                //     { date: "2025-01-06", price: 1080 },
-                //     { date: "2025-01-07", price: 1150 },
-                // ];
-                // await new Promise((resolve) => setTimeout(resolve, 1000));
-                // setData(fakeData);
                 setError(null);
             } catch (err) {
-                setError("Failed to fetch data. Please try again later.");
+                setError("Failed to fetch wallet data. Please ensure you have set up your wallet address in the Profile section.");
+                console.error(err);
             } finally {
                 setIsLoading(false);
             }
@@ -84,22 +71,34 @@ const Dashboard = () => {
             },
             title: {
                 display: true,
-                text: "Crypto Wallet Price Evolution",
+                text: "Crypto Wallet Value Evolution",
             },
         },
     };
 
     return (
-        <div style={{ padding: "2rem" }}>
-            <h1>Crypto Wallet</h1>
-            {isLoading && <p>Loading...</p>}
-            {error && <p style={{ color: "red" }}>{error}</p>}
+        <div className="p-8">
+            <h1 className="text-2xl font-bold mb-6">Crypto Wallet Dashboard</h1>
+            {isLoading && (
+                <div className="flex justify-center items-center h-64">
+                    <p>Loading wallet data...</p>
+                </div>
+            )}
+            {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                    <p>{error}</p>
+                </div>
+            )}
             {!isLoading && !error && data.length > 0 && (
-                <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+                <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow">
                     <Line data={chartData} options={chartOptions} />
                 </div>
             )}
-            {!isLoading && !error && data.length === 0 && <p>No data available.</p>}
+            {!isLoading && !error && data.length === 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
+                    <p>No wallet data available. Please set up your wallet in the Profile section.</p>
+                </div>
+            )}
         </div>
     );
 };
