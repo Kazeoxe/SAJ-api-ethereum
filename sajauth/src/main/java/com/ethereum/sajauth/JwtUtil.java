@@ -17,7 +17,7 @@ public class JwtUtil {
     private String SECRET_KEY;
 
     private final SignatureAlgorithm sa = SignatureAlgorithm.HS256;
-    private final int ACCESS_TOKEN_EXPIRATION = 60 * 1000; // 15 minutes
+    private final int ACCESS_TOKEN_EXPIRATION = 15 * 60 * 1000; // 15 minutes
     private final int REFRESH_TOKEN_EXPIRATION = 7 * 24 * 60 * 60 * 1000; // 7 days
 
     private SecretKey getSigningKey() {
@@ -49,10 +49,4 @@ public class JwtUtil {
         return email.equals(extractClaims(token).getSubject());
     }
 
-    public User getUserFromToken(String token) {
-        Claims claims = extractClaims(token);
-        User user = new User();
-        user.setEmail(claims.getSubject());
-        return user;
-    }
 }

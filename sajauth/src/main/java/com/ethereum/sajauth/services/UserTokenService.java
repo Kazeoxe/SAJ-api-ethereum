@@ -11,6 +11,8 @@ import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
+
 @Service
 public class UserTokenService {
 
@@ -51,4 +53,8 @@ public class UserTokenService {
         userTokenRepository.deleteByUser(user);
     }
 
+    public boolean validateRefreshToken(String refreshToken, User user) {
+        Optional<UserToken> userToken = userTokenRepository.findByRefreshTokenAndUser(refreshToken, user);
+        return userToken.isPresent();
+    }
 }

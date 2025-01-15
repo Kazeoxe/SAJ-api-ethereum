@@ -10,7 +10,9 @@ import com.ethereum.sajauth.services.EmailService;
 import com.ethereum.sajauth.services.UserService;
 import com.ethereum.sajauth.services.UserTokenService;
 import com.ethereum.sajauth.services.VerificationTokenService;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -147,25 +149,31 @@ public class AuthController {
 
     @GetMapping("/validate-token")
     public ResponseEntity<?> validateToken() {
+        // todo : Vérifier si il y a bien un token
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/refresh-token")
     public ResponseEntity<?> refreshToken(@CookieValue("refreshToken") String refreshToken, HttpServletResponse response) {
         try {
-            String email = jwtUtil.extractClaims(refreshToken).getSubject();
-
-            if (!jwtUtil.validateToken(refreshToken, email))
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Token invalide"));
-
+            Claims claims = jwtUtil.extractClaims(refreshToken); // Vérifie la signature et l'expiration
+            String email = claims.getSubject();
             User user = userService.getUserFromToken(refreshToken);
+
+            if (email == null || !userTokenService.validateRefreshToken(refreshToken, user)) // Vérifie si le token est révoqué ou non
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Token invalide ou révoqué"));
+
             TokenResponse userTokens = userTokenService.createUserTokens(user, response);
 
             return ResponseEntity.ok(new LoginResponse(userTokens.getAccessToken(), user.getId()));
+
         } catch (ExpiredJwtException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Token expiré"));
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Token invalide"));
         }
     }
+
 }
 
 
