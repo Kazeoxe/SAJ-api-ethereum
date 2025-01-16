@@ -53,4 +53,20 @@ public class UserService {
         return user;
     }
 
+    public boolean limitLoginAttempts(User user) {
+        int attempts = user.getLoginAttempts();
+
+        if (attempts < 5) {
+            user.setLoginAttempts(++attempts);
+        } else {
+            user.setLoginAttempts(0);
+            userRepository.save(user);
+            return true;
+        }
+
+        userRepository.save(user);
+
+        return false;
+    }
+
 }

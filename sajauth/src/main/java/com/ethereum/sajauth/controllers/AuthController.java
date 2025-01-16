@@ -11,6 +11,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mail.MailException;
@@ -21,6 +22,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
@@ -34,12 +36,11 @@ public class AuthController {
     private final EmailService emailService;
     private final UserTokenService userTokenService;
     private final UserService userService;
-
-    private static final String EMAIL_REGEX = "^[A-Za-z0-9+_.-]+@(.+)$";
-    private static final Pattern EMAIL_PATTERN = Pattern.compile(EMAIL_REGEX);
-    private static final String PASSWORD_REGEX = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\W_]).{8,}$";
-    private static final Pattern PASSWORD_PATTERN = Pattern.compile(PASSWORD_REGEX);
     private final JwtUtil jwtUtil;
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@(.+)$");
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[\\W_]).{8,}$");
+    private static final int LOGIN_TIMEOUT = 5;
 
     public AuthController(
             AuthenticationManager authenticationManager,
@@ -81,12 +82,18 @@ public class AuthController {
     }
 
     @PostMapping("/auth/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response, HttpSession session) {
         User user = null;
         try {
             user = userRepository.findByEmail(loginRequest.getEmail())
                     .orElseThrow(() -> new UsernameNotFoundException("Utilisateur non trouvé"));
 
+            UserRequestTimeout userRequestLimit = (UserRequestTimeout) session.getAttribute("loginAttempts/" + user.getEmail());
+
+            if (userRequestLimit != null && userRequestLimit.getTimeoutExpiration().isAfter(LocalDateTime.now()))
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(new MessageResponse("Vous avez atteint la limite de tentative de connexion, Veuillez réessayer plus tard..."));
+
+            /* Authentification */
             authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(
                             loginRequest.getEmail(),
@@ -98,6 +105,17 @@ public class AuthController {
 
             return ResponseEntity.ok(new LoginResponse(userTokens.getAccessToken(), user.getId()));
         } catch (UsernameNotFoundException | BadCredentialsException e) {
+            if (user != null) {
+                boolean needALoginTimeout = userService.limitLoginAttempts(user);
+
+                if (needALoginTimeout) {
+                    UserRequestTimeout userTimeout = new UserRequestTimeout();
+                    userTimeout.setUser(user);
+                    userTimeout.setTimeoutExpiration(LocalDateTime.now().now().plusMinutes(LOGIN_TIMEOUT));
+                    session.setAttribute("loginAttempts/" + user.getEmail(), userTimeout);
+                    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(new MessageResponse("Vous avez atteint la limite de tentative de connexion, Veuillez réessayer plus tard..."));
+                }
+            }
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Email ou mot de passe incorrect"));
         } catch (MailException e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new MessageResponse("Erreur lors de l'envoi de l'email de confirmation"));

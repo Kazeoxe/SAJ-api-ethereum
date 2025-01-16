@@ -28,6 +28,9 @@ public class User {
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean enabled = false;
 
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int loginAttempts = 0;
+
     private String verificationToken;
     private LocalDateTime verificationTokenExpiry;
 
