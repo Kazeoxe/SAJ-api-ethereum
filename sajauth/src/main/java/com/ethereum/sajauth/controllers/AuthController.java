@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.regex.Pattern;
 
 @RestController
-@RequestMapping("/api/v1/auth")
+@RequestMapping("/api/v1")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -65,7 +65,7 @@ public class AuthController {
         this.jwtUtil = jwtUtil;
     }
 
-    @PostMapping("/register")
+    @PostMapping("/auth/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest registerRequest) {
         // Validation de l'email
         if (!EMAIL_PATTERN.matcher(registerRequest.getEmail()).matches()) {
@@ -112,7 +112,7 @@ public class AuthController {
         return ResponseEntity.ok(new MessageResponse("Un email de confirmation vous a été envoyé"));
     }
 
-    @PostMapping("/login")
+    @PostMapping("/auth/login")
     public ResponseEntity<?> login(@RequestBody LoginRequest loginRequest, HttpServletResponse response) {
         try {
             User user = userRepository.findByEmail(loginRequest.getEmail())
@@ -141,7 +141,7 @@ public class AuthController {
         }
     }
 
-    @GetMapping("/verify-email")
+    @PostMapping("/auth/verify-email")
     public ResponseEntity<?> verifyAccount(@RequestBody VerifyAccountRequest request) {
         return verificationTokenService.validateToken(request.getToken())
                 .map(user -> ResponseEntity.ok(new MessageResponse("Compte activé avec succès")))
@@ -150,11 +150,10 @@ public class AuthController {
 
     @GetMapping("/validate-token")
     public ResponseEntity<?> validateToken() {
-        // todo : Vérifier si il y a bien un token
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/refresh-token")
+    @GetMapping("/auth/refresh-token")
     public ResponseEntity<?> refreshToken(@CookieValue("refreshToken") String refreshToken, HttpServletResponse response) {
         try {
             Claims claims = jwtUtil.extractClaims(refreshToken); // Vérifie la signature et l'expiration
