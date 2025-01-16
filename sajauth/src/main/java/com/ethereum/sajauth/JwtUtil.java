@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Base64;
 import java.util.Date;
 
@@ -49,4 +51,27 @@ public class JwtUtil {
         return email.equals(extractClaims(token).getSubject());
     }
 
+    public String hashRefreshToken(String refreshToken) {
+        try {
+            return Jwts.builder()
+                    .setSubject(refreshToken)
+                    .signWith(getSigningKey(), sa)
+                    .compact();
+        } catch (Exception e) {
+            throw new RuntimeException("Erreur lors du hashing du refresh token", e);
+        }
+    }
+
+    public boolean validateRefreshTokenHash(String originalRefreshToken, String hashedRefreshToken) {
+        try {
+            String computedHash = hashRefreshToken(originalRefreshToken);
+            // Comparaison sécurisée pour éviter les timing attacks
+            return MessageDigest.isEqual(
+                    computedHash.getBytes(StandardCharsets.UTF_8),
+                    hashedRefreshToken.getBytes(StandardCharsets.UTF_8)
+            );
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

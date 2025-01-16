@@ -18,6 +18,7 @@ public class UserToken {
     @JoinColumn(name = "user_id")
     private User user;
 
+    @Column(length = 1024) // Refresh token étant hashé
     private String refreshToken;
     private Date creationDate;
     private Date expirationDate;
