@@ -13,6 +13,7 @@ import com.ethereum.sajauth.services.VerificationTokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -171,6 +172,31 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Token expiré"));
         } catch (JwtException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Token invalide"));
+        }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+
+        // Vérification explicite du header même si le filtre JWT est présent
+        if (authHeader == null || !authHeader.startsWith("Bearer "))
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Token d'authentification manquant"));
+
+        try {
+            String jwt = authHeader.substring(7);
+            User user = userService.getUserFromToken(jwt);
+
+            if (user == null)
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Utilisateur non trouvé"));
+
+            userTokenService.removeOldUserTokens(user);
+            return ResponseEntity.ok().body(new MessageResponse("Déconnexion réussie"));
+
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new MessageResponse("Token invalide"));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new MessageResponse("Erreur lors de la déconnexion"));
         }
     }
 
