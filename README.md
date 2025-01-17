@@ -1,5 +1,7 @@
 # Setup du projet
 
+![Dashboard exemple](./public/exempleWalletMedium.png)
+
 ## Base de données
 
 docker compose up -d
@@ -23,6 +25,8 @@ npm run start:dev
 
 ## Ne pas utiliser la connexion d'HETIC (qui empêche l'envoi de mail)
 
+## Points non faits
+- Les récompences/bonus de minage
 
 # Endpoints API Authentication
 
@@ -93,3 +97,5 @@ Récupère l'historique des balances du wallet.
 - Toutes les routes nécessitent une authentification
 - Les requêtes sont effectuées via des API dédiées (WalletAPI)
 - Communication sécurisée pour les opérations sensibles sur les wallets
+
+

@@ -1,6 +1,7 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
+import { jwtDecode } from 'jwt-decode';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -26,9 +27,16 @@ export class AuthGuard implements CanActivate {
           }
         })
       );
-
+      interface DecodedToken {
+        userId: string;
+      }
+      const decodedToken = jwtDecode<DecodedToken>(token); 
+      const userId = decodedToken.userId;
+      console.log('Decoded token:', decodedToken);
       this.logger.debug('Token validation response:', response.data);
-      request.user = response.data;
+
+      request.user = { ...response.data, userId };
+      
       return true;
     } catch (error: any) {
       this.logger.error('Token validation failed:', error.response?.data || error.message);

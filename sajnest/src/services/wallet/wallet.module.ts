@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { WalletController } from './wallet.controller';
 import { WalletService } from './wallet.service';
 import { EtherscanService } from '../etherscan/etherscan.service';
+import { CryptoCompareService } from '../cryptocompare/cryptocompare.service';
 import { User } from '../user/user.entity';
 import { AuthGuard } from '../auth/auth.guard';
 import { HttpModule } from '@nestjs/axios';
@@ -15,7 +16,7 @@ import { HttpModule } from '@nestjs/axios';
     HttpModule
   ],
   controllers: [WalletController],
-  providers: [WalletService, EtherscanService, AuthGuard],
+  providers: [WalletService, EtherscanService, CryptoCompareService, AuthGuard],
   exports: [WalletService]
 })
 export class WalletModule {}

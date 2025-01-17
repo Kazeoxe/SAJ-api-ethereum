@@ -24,11 +24,13 @@ ChartJS.register(
 
 interface BalanceHistory {
     date: string;
-    balance: number;
+    balance: string;
+    balanceEur: string | null;
 }
 
 interface WalletData {
-    currentBalance: number;
+    currentBalance: string;
+    currentBalanceEur: string;
     history: BalanceHistory[];
 }
 
@@ -54,8 +56,7 @@ const Dashboard = () => {
 
         fetchData();
     }, []);
-   
-console.log(walletData?.history);
+
     const chartData = walletData ? {
         labels: walletData.history.map((entry) => {
             const date = new Date(entry.date);
@@ -64,16 +65,29 @@ console.log(walletData?.history);
         datasets: [
             {
                 label: "Wallet Balance (ETH)",
-                data: walletData.history.map((entry) => entry.balance),
+                data: walletData.history.map((entry) => Number(entry.balance)),
                 borderColor: "rgba(75, 192, 192, 1)",
                 backgroundColor: "rgba(75, 192, 192, 0.2)",
                 tension: 0.4,
+                yAxisID: 'y'
             },
+            {
+                label: "Wallet Value (EUR)",
+                data: walletData.history.map((entry) => entry.balanceEur ? Number(entry.balanceEur) : null),
+                borderColor: "rgba(153, 102, 255, 1)",
+                backgroundColor: "rgba(153, 102, 255, 0.2)",
+                tension: 0.4,
+                yAxisID: 'y1'
+            }
         ],
     } : null;
 
     const chartOptions = {
         responsive: true,
+        interaction: {
+            mode: 'index' as const,
+            intersect: false,
+        },
         plugins: {
             legend: {
                 display: true,
@@ -84,15 +98,42 @@ console.log(walletData?.history);
             },
             tooltip: {
                 callbacks: {
-                    label: (context: any) => `Balance: ${context.raw.toFixed(4)} ETH`
+                    label: (context: any) => {
+                        if (context.datasetIndex === 0) {
+                            return `Balance: ${Number(context.raw).toFixed(8)} ETH`;
+                        } else {
+                            return `Value: ${Number(context.raw).toFixed(2)} EUR`;
+                        }
+                    }
                 }
             }
         },
         scales: {
             y: {
-                beginAtZero: true,
+                type: 'linear' as const,
+                display: true,
+                position: 'left' as const,
+                title: {
+                    display: true,
+                    text: 'ETH'
+                },
                 ticks: {
-                    callback: (value: any) => `${value} ETH`
+                    callback: (value: any) => `${Number(value).toFixed(8)} ETH`
+                }
+            },
+            y1: {
+                type: 'linear' as const,
+                display: true,
+                position: 'right' as const,
+                title: {
+                    display: true,
+                    text: 'EUR'
+                },
+                ticks: {
+                    callback: (value: any) => `${Number(value).toFixed(2)} €`
+                },
+                grid: {
+                    drawOnChartArea: false,
                 }
             }
         }
@@ -117,9 +158,18 @@ console.log(walletData?.history);
             {!isLoading && !error && walletData && (
                 <div className="space-y-8">
                     <div className="bg-white p-6 rounded-lg shadow">
-                        <h2 className="text-xl font-semibold mb-4">
-                            Current Balance: {walletData.currentBalance.toFixed(10)} ETH
-                        </h2>
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <h2 className="text-xl font-semibold">
+                                    Current Balance: {Number(walletData.currentBalance).toFixed(8)} ETH
+                                </h2>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-semibold">
+                                    Current Value: {Number(walletData.currentBalanceEur).toFixed(2)} EUR
+                                </h2>
+                            </div>
+                        </div>
                         {chartData && <Line data={chartData} options={chartOptions} />}
                     </div>
                 </div>
