@@ -22,13 +22,18 @@ ChartJS.register(
     Legend
 );
 
-interface PriceEvolution {
+interface BalanceHistory {
     date: string;
-    price: number;
+    balance: number;
+}
+
+interface WalletData {
+    currentBalance: number;
+    history: BalanceHistory[];
 }
 
 const Dashboard = () => {
-    const [data, setData] = useState<PriceEvolution[]>([]);
+    const [walletData, setWalletData] = useState<WalletData | null>(null);
     const [isLoading, setIsLoading] = useState<boolean>(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -36,8 +41,8 @@ const Dashboard = () => {
         const fetchData = async () => {
             try {
                 setIsLoading(true);
-                const response = await API.wallet.getWalletData();
-                setData(response.data);
+                const response = await API.wallet.getBalanceHistory();
+                setWalletData(response.data);
                 setError(null);
             } catch (err) {
                 setError("Failed to fetch wallet data. Please ensure you have set up your wallet address in the Profile section.");
@@ -49,19 +54,22 @@ const Dashboard = () => {
 
         fetchData();
     }, []);
-
-    const chartData = {
-        labels: data.map((entry) => entry.date),
+console.log(walletData?.history);
+    const chartData = walletData ? {
+        labels: walletData.history.map((entry) => {
+            const date = new Date(entry.date);
+            return date.toLocaleDateString();
+        }),
         datasets: [
             {
-                label: "Crypto Wallet Price Evolution",
-                data: data.map((entry) => entry.price),
+                label: "Wallet Balance (ETH)",
+                data: walletData.history.map((entry) => entry.balance),
                 borderColor: "rgba(75, 192, 192, 1)",
                 backgroundColor: "rgba(75, 192, 192, 0.2)",
                 tension: 0.4,
             },
         ],
-    };
+    } : null;
 
     const chartOptions = {
         responsive: true,
@@ -71,32 +79,48 @@ const Dashboard = () => {
             },
             title: {
                 display: true,
-                text: "Crypto Wallet Value Evolution",
+                text: "Wallet Balance Evolution",
             },
+            tooltip: {
+                callbacks: {
+                    label: (context: any) => `Balance: ${context.raw.toFixed(4)} ETH`
+                }
+            }
         },
+        scales: {
+            y: {
+                beginAtZero: true,
+                ticks: {
+                    callback: (value: any) => `${value} ETH`
+                }
+            }
+        }
     };
 
     return (
         <div className="p-8">
-            <h1 className="text-2xl font-bold mb-6">Crypto Wallet Dashboard</h1>
+            <h1 className="text-2xl font-bold mb-6">Wallet Dashboard</h1>
+            
             {isLoading && (
                 <div className="flex justify-center items-center h-64">
                     <p>Loading wallet data...</p>
                 </div>
             )}
+
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
                     <p>{error}</p>
                 </div>
             )}
-            {!isLoading && !error && data.length > 0 && (
-                <div className="max-w-4xl mx-auto bg-white p-6 rounded-lg shadow">
-                    <Line data={chartData} options={chartOptions} />
-                </div>
-            )}
-            {!isLoading && !error && data.length === 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 rounded">
-                    <p>No wallet data available. Please set up your wallet in the Profile section.</p>
+
+            {!isLoading && !error && walletData && (
+                <div className="space-y-8">
+                    <div className="bg-white p-6 rounded-lg shadow">
+                        <h2 className="text-xl font-semibold mb-4">
+                            Current Balance: {walletData.currentBalance.toFixed(10)} ETH
+                        </h2>
+                        {chartData && <Line data={chartData} options={chartOptions} />}
+                    </div>
                 </div>
             )}
         </div>

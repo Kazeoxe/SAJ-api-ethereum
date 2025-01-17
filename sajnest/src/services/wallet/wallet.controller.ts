@@ -4,7 +4,7 @@ import { WalletService } from './wallet.service';
 import { User } from '../decorators/user.decorator';
 
 interface UserRequest {
-  userId: string; // Reste en string car c'est ce que nous envoie l'AuthGuard
+  userId: number; // Reste en string car c'est ce que nous envoie l'AuthGuard
   username: string;
 }
 
@@ -61,13 +61,15 @@ export class WalletController {
     }
   }
 
-  @Get('get_data')
-  async getWalletData(@User() user: UserRequest) {
+ 
+  @Get('balance-history')
+  async getBalanceHistory(@User() user: UserRequest) {
+    this.logger.debug(`Getting balance history for user: ${user.userId}`);
     try {
-      const history = await this.walletService.getWalletHistory(user.userId);
-      return history;
+      return await this.walletService.getWalletBalanceHistory(user.userId);
     } catch (error) {
-      throw new BadRequestException('Failed to fetch wallet history');
+      this.logger.error('Failed to fetch balance history:', error);
+      throw new BadRequestException('Failed to fetch balance history');
     }
   }
 }

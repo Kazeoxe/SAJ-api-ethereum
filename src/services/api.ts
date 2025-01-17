@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const AuthAPI = axios.create({
-    baseURL: process.env.REACT_APP_AUTH_API_URL || "http://localhost:8080/",
+    baseURL: process.env.REACT_APP_AUTH_API_URL || "http://localhost:8080/api/v1",
     withCredentials: true,
 });
 
@@ -97,13 +97,13 @@ const API = {
         register: (data: any) => AuthAPI.post("/auth/register", data),
         verifyEmail: (data: any) => AuthAPI.post("/auth/verify-email", data),
         refresh: () => AuthAPI.post("/auth/refresh"),
-        logout: () => AuthAPI.delete("/auth/logout"),
+        logout: () => AuthAPI.delete("/logout"),
     },
     
     wallet: {
         getWallet: () => WalletAPI.get("/wallet/get_wallet"),
         updateWallet: (data: any) => WalletAPI.put("/wallet/update_wallet", data),
-        getWalletData: () => WalletAPI.get("/wallet/get_data"),
+        getBalanceHistory: () => WalletAPI.get("/wallet/balance-history")
     },
     
     get: (url: string) => {
