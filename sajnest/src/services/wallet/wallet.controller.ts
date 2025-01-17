@@ -5,7 +5,6 @@ import { User } from '../decorators/user.decorator';
 
 interface UserRequest {
   userId: number; // Reste en string car c'est ce que nous envoie l'AuthGuard
-  username: string;
 }
 
 interface WalletUpdateDto {

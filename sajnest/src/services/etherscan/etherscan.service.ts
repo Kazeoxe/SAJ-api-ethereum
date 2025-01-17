@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
+import {ethers} from 'ethers'
 
 interface Transaction {
   hash: string;
@@ -15,9 +16,9 @@ interface Transaction {
 
 interface WalletBalance {
   timestamp: number;
-  balance: number;
+  balance: string;
   txHash: string;
-  change: number;
+  change: string;
   type: 'IN' | 'OUT';
 }
 
@@ -26,9 +27,18 @@ export class EtherscanService {
   private readonly logger = new Logger(EtherscanService.name);
   private readonly apiKey: string;
   private readonly baseUrl: string = 'https://api.etherscan.io/api';
+  private readonly WEI_PER_ETH = BigInt('1000000000000000000'); // 1e18
 
   constructor(private configService: ConfigService) {
     this.apiKey = this.configService.get<string>('ETHERSCAN_API_KEY');
+  }
+
+  // convert Wei (as BigInt) to ETH (as string)
+  private weiToEth(wei: bigint): string {
+    const eth = wei / this.WEI_PER_ETH;
+    const remainder = wei % this.WEI_PER_ETH;
+    const decimals = remainder.toString().padStart(18, '0');
+    return `${eth.toString()}.${decimals}`;
   }
 
   async getWalletBalanceHistory(address: string): Promise<WalletBalance[]> {
@@ -41,7 +51,7 @@ export class EtherscanService {
     }
   }
 
-  private async getAllTransactions(address: string): Promise<any[]> {
+  private async getAllTransactions(address: string): Promise<Transaction[]> {
     try {
       const [normalTxs, internalTxs] = await Promise.all([
         axios.get(this.baseUrl, {
@@ -68,58 +78,59 @@ export class EtherscanService {
         })
       ]);
 
-      return [
+      const txs = [
         ...(normalTxs.data.status === '1' ? normalTxs.data.result : []),
         ...(internalTxs.data.status === '1' ? internalTxs.data.result : [])
       ];
+      console.log('Fetched ' + txs.length + ' transactions');
+      return txs
     } catch (error) {
       this.logger.error('Error fetching transactions:', error);
       return [];
     }
   }
 
-  private calculateBalanceHistory(address: string, transactions: any[]): WalletBalance[] {
+  private calculateBalanceHistory(address: string, transactions: Transaction[]): WalletBalance[] {
     const history: WalletBalance[] = [];
     const addressLower = address.toLowerCase();
     
-    // Filtrer et trier les transactions
+    // Filter and sort transactions
     const validTransactions = transactions
-      .filter(tx => tx.isError === '0')
       .sort((a, b) => parseInt(a.timeStamp) - parseInt(b.timeStamp));
 
-    let runningBalance = 0;
+    console.log(validTransactions.length + ' valid transactions');
+
+    let runningBalance = BigInt(0);
 
     validTransactions.forEach(tx => {
       const timestamp = parseInt(tx.timeStamp);
-      const value = parseFloat(tx.value) / 1e18;// 1e18 = 1 ether
-      let change = 0;
+      const value = BigInt(tx.value);
+      let change = BigInt(0);
 
       if (tx.to.toLowerCase() === addressLower) {
-        // Transaction entrante : ajouter uniquement la valeur
+        // transaction entrante: ajouter la valeur
         change = value;
         runningBalance += value;
       } else if (tx.from.toLowerCase() === addressLower) {
-        // Transaction sortante : soustraire la valeur et les frais
-        const gasCost = (parseFloat(tx.gasUsed) * parseFloat(tx.gasPrice)) / 1e18;
+        // transaction sortante: soustraire la valeur et les frais de gaz
+        const gasCost = tx.gasUsed && tx.gasPrice ? BigInt(tx.gasUsed) * BigInt(tx.gasPrice) : 0n; 
         change = -(value + gasCost);
         runningBalance -= (value + gasCost);
       }
 
-      if (Math.abs(change) >= 0.000001 || history.length === 0) {
-        history.push({
-          timestamp,
-          balance: runningBalance,
-          txHash: tx.hash,
-          change:change,
-          type: change >= 0 ? 'IN' : 'OUT'
-        });
-      }
-    });
+      history.push({
+        timestamp,
+        balance: ethers.formatEther(runningBalance),
+        txHash: tx.hash,
+        change: ethers.formatEther(change),
+        type: change >= 0n ? 'IN' : 'OUT'
+      });
+  });
 
-    return history;
-  }
+  return history;
+}
 
-  async getCurrentBalance(address: string): Promise<number> {
+  async getCurrentBalance(address: string): Promise<string> {
     try {
       const response = await axios.get(this.baseUrl, {
         params: {
@@ -132,7 +143,8 @@ export class EtherscanService {
       });
 
       if (response.data.status === '1') {
-        return parseFloat(response.data.result) / 1e18;
+        const balanceWei = BigInt(response.data.result);
+        return this.weiToEth(balanceWei);
       }
       throw new Error('Failed to fetch current balance');
     } catch (error) {
