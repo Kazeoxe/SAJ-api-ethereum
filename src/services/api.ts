@@ -19,6 +19,7 @@ const TokenService = {
     removeToken: () => localStorage.removeItem("token"),
 };
 
+
 const onRefreshed = (token: string) => {
     refreshSubscribers.forEach((callback) => callback(token));
     refreshSubscribers = [];
@@ -36,6 +37,7 @@ const addRefreshSubscriber = (callback: (token: string) => void) => {
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
+
             return config;
         },
         (error) => Promise.reject(error)
@@ -102,7 +104,7 @@ const API = {
     },
 
     wallet: {
-        getWallet: () => WalletAPI.get("/wallet/get_wallet"),
+        getWallet: (data :  any) => WalletAPI.get("/wallet/get_wallet",data),
         updateWallet: (data: any) => WalletAPI.put("/wallet/update_wallet", data),
         getBalanceHistory: () => WalletAPI.get("/wallet/balance-history")
     },

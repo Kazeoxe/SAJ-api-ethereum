@@ -2,6 +2,7 @@ package com.ethereum.sajauth;
 
 import com.ethereum.sajauth.entities.User;
 import com.ethereum.sajauth.enums.JwtTokenEnum;
+import com.ethereum.sajauth.repositories.UserRepository;
 import io.jsonwebtoken.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -15,12 +16,17 @@ import java.util.Date;
 
 @Component
 public class JwtUtil {
+    private final UserRepository userRepository;
     @Value("${jwt.secret.key}")
     private String SECRET_KEY;
 
     private final SignatureAlgorithm sa = SignatureAlgorithm.HS256;
     private final int ACCESS_TOKEN_EXPIRATION = 15 * 60 * 1000; // 15 minutes
     private final int REFRESH_TOKEN_EXPIRATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+    public JwtUtil(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
 
     private SecretKey getSigningKey() {
         byte[] keyBytes = Base64.getDecoder().decode(SECRET_KEY);
@@ -31,9 +37,15 @@ public class JwtUtil {
         Date accessTokenExpiration = new Date(System.currentTimeMillis() + ACCESS_TOKEN_EXPIRATION);
         Date refreshTokenExpiration = new Date(System.currentTimeMillis() + REFRESH_TOKEN_EXPIRATION);
 
+        Long userId = userRepository.findByEmail(email)
+                .map(User::getId)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date())
+                .claim("userId", userId)
                 .setExpiration(JwtTokenEnum.ACCESS.getId() == tokenType ? accessTokenExpiration : refreshTokenExpiration)
                 .signWith(getSigningKey(), sa)
                 .compact();

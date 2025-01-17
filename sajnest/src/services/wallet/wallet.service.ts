@@ -2,8 +2,8 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../user/user.entity';
-import axios from 'axios';
 import { EtherscanService } from '../etherscan/etherscan.service';
+import { CryptoCompareService } from '../cryptocompare/cryptocompare.service';
 
 @Injectable()
 export class WalletService {
@@ -12,98 +12,97 @@ export class WalletService {
   constructor(
     @InjectRepository(User)
     private userRepository: Repository<User>,
-    private etherscanService: EtherscanService
+    private etherscanService: EtherscanService,
+    private cryptoCompareService: CryptoCompareService
   ) {}
 
-  private validateUserId(userId: number): number {
-    if (!userId) {
-      throw new BadRequestException('User ID is required');
+  private async getUserById(userId: number): Promise<User> {
+    if (!userId || isNaN(userId)) {
+      throw new BadRequestException('Invalid user ID');
     }
-    const numericId = parseInt(userId.toString(), 10);
-    if (isNaN(numericId)) {
-      throw new BadRequestException('Invalid user ID format');
+
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'wallet'] // Only select needed fields
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
     }
-    return numericId;
+
+    return user;
   }
 
-  async getWallet(userId: number): Promise<any> {
+  async getWallet(userId: number): Promise<{ wallet: string } | null> {
     try {
-      const numericId = this.validateUserId(userId);
-      this.logger.debug(`Fetching wallet for user ${numericId}`);
-
-      const user = await this.userRepository
-        .createQueryBuilder('user')
-        .select(['user.wallet'])
-        .where('user.id = :id', { id: numericId })
-        .getOne();
-
-      return { wallet: user?.wallet || '' };
+      this.logger.debug(`Fetching wallet for user ${userId}`);
+      const user = await this.getUserById(userId);
+      return { wallet: user.wallet || '' };
     } catch (error) {
-      this.logger.error('Error fetching wallet:', error);
+      this.logger.error(`Error fetching wallet: ${error.message}`);
       throw error;
     }
   }
 
-  async updateWallet(userId: number, walletAddress: string): Promise<any> {
+  async updateWallet(userId: number, walletAddress: string): Promise<{ wallet: string }> {
     try {
-      const numericId = this.validateUserId(userId);
-      this.logger.debug(`Updating wallet for user ${numericId} with address ${walletAddress}`);
+      this.logger.debug(`Updating wallet for user ${userId} with address ${walletAddress}`);
+      
+      // Vérifier d'abord si l'utilisateur existe
+      await this.getUserById(userId);
 
       const result = await this.userRepository
         .createQueryBuilder()
         .update(User)
         .set({ wallet: walletAddress })
-        .where('id = :id', { id: numericId })
+        .where('id = :id', { id: userId })
         .execute();
 
       if (result.affected === 0) {
-        throw new NotFoundException('User not found');
+        throw new NotFoundException('Failed to update wallet');
       }
 
       return { wallet: walletAddress };
     } catch (error) {
-      this.logger.error('Error updating wallet:', error);
+      this.logger.error(`Error updating wallet: ${error.message}`);
       throw error;
     }
   }
 
-  private async getPriceHistory(symbol: string = 'ETH') {
-    const apiKey = process.env.CRYPTOCOMPARE_API_KEY;
-    const limit = 10;
-    
-    try {
-      const { data } = await axios.get(
-        `https://min-api.cryptocompare.com/data/v2/histoday?fsym=${symbol}&tsym=USD&limit=${limit}&api_key=${apiKey}`
-      );
-      return data.Data.Data.map((item: any) => ({
-        date: new Date(item.time * 1000).toISOString().split('T')[0],
-        price: item.close,
-      }));
-    } catch (error) {
-      this.logger.error('Error fetching price history:', error);
-      return [];
-    }
-  }
-
   async getWalletBalanceHistory(userId: number) {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
-    if (!user?.wallet) {
-      throw new NotFoundException('Wallet not found');
-    }
-
     try {
+      const user = await this.getUserById(userId);
+      
+      if (!user.wallet) {
+        throw new BadRequestException('No wallet address found for this user');
+      }
+
       const balanceHistory = await this.etherscanService.getWalletBalanceHistory(user.wallet);
       const currentBalance = await this.etherscanService.getCurrentBalance(user.wallet);
+      
+      // Get historical prices for each timestamp
+      const timestamps = balanceHistory.map(item => item.timestamp);
+      const historicalPrices = await this.cryptoCompareService.getHistoricalPrices(timestamps);
+      
+      // Get current price for the current balance
+      const currentPrice = await this.cryptoCompareService.getCurrentPrice();
 
       return {
         currentBalance,
-        history: balanceHistory.map(item => ({
-          date: new Date(item.timestamp * 1000).toISOString(),
-          balance: item.balance
-        }))
+        currentBalanceEur: (Number(currentBalance) * currentPrice).toString(),
+        history: balanceHistory.map(item => {
+          const ethBalance = Number(item.balance);
+          const eurPrice = historicalPrices[item.timestamp];
+          return {
+            date: new Date(item.timestamp * 1000).toISOString(),
+            balance: item.balance,
+            balanceEur: eurPrice ? (ethBalance * eurPrice).toString() : null,
+            ethPrice: eurPrice ? eurPrice.toString() : null
+          };
+        })
       };
     } catch (error) {
-      this.logger.error('Error fetching balance history:', error);
+      this.logger.error(`Error fetching balance history: ${error.message}`);
       throw error;
     }
   }
