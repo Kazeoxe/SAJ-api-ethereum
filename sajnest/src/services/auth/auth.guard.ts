@@ -19,7 +19,6 @@ export class AuthGuard implements CanActivate {
 
     try {
       this.logger.debug(`Validating token with Java service for ${request.method} ${request.url}`);
-      this.logger.error('HERE');
       const response = await firstValueFrom(
         this.httpService.get('http://localhost:8080/api/v1/validate-token', {
           headers: {
@@ -39,6 +38,8 @@ export class AuthGuard implements CanActivate {
 
   private extractTokenFromHeader(request: any): string | undefined {
     const [type, token] = request.headers.authorization?.split(' ') ?? [];
+    console.log('Type:', request.headers.authorization);
+;
     return type === 'Bearer' ? token : undefined;
   }
 }

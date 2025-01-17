@@ -54,6 +54,7 @@ const Dashboard = () => {
 
         fetchData();
     }, []);
+   
 console.log(walletData?.history);
     const chartData = walletData ? {
         labels: walletData.history.map((entry) => {

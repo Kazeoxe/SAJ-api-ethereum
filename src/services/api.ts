@@ -32,6 +32,7 @@ const addRefreshSubscriber = (callback: (token: string) => void) => {
     api.interceptors.request.use(
         (config) => {
             const token = TokenService.getToken();
+            console.log('Token:', token);
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }

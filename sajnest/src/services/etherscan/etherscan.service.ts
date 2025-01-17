@@ -108,9 +108,9 @@ export class EtherscanService {
       if (Math.abs(change) >= 0.000001 || history.length === 0) {
         history.push({
           timestamp,
-          balance: Number(Math.max(0, runningBalance).toFixed(8)),
+          balance: runningBalance,
           txHash: tx.hash,
-          change: Number(change.toFixed(8)),
+          change:change,
           type: change >= 0 ? 'IN' : 'OUT'
         });
       }

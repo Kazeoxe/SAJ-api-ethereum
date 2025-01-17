@@ -14,10 +14,8 @@ const Login = () => {
         try {
             const { data } = await API.auth.login({ email, password });
             login();
-            localStorage.setItem("token", data.accessToken);
+            localStorage.setItem("token", data.token);
             localStorage.setItem("userID", data.userID);
-        
-            console.log("Login successful:", data);
         } catch (error: any) {
             console.error("Login failed:", error);
             setError(error.response?.data?.message || "Login failed");
