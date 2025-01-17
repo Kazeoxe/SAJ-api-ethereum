@@ -97,7 +97,7 @@ const API = {
         login: (data: any) => AuthAPI.post("/auth/login", data),
         register: (data: any) => AuthAPI.post("/auth/register", data),
         verifyEmail: (data: any) => AuthAPI.post("/auth/verify-email", data),
-        refresh: () => AuthAPI.post("/auth/refresh"),
+        refresh: () => AuthAPI.post("/auth/refresh-token"),
         logout: () => AuthAPI.delete("/logout"),
     },
 
