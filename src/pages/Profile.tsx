@@ -3,19 +3,22 @@ import API from "../services/api";
 
 const Profile = () => {
     const [wallet, setWallet] = useState<string>("");
-    const [error, setError] = useState<string>("");
-    const [success, setSuccess] = useState<string>("");
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchWallet = async () => {
+            setLoading(true);
             try {
                 // Utiliser la méthode spécifique au wallet
                 const { data } = await API.wallet.getWallet();
-                console.log("Get wallet response:", data);
                 setWallet(data.wallet);
+                setError(null);
             } catch (error) {
-                console.error("Failed to fetch wallet:", error);
+                console.error("Failed to fetch wallet");
                 setError("Failed to fetch wallet");
+            } finally {
+                setLoading(false);
             }
         };
 
@@ -24,33 +27,23 @@ const Profile = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        setError("");
-        setSuccess("");
-        
+        setLoading(true);
         try {
-            const response = await API.wallet.updateWallet({ wallet });
-            console.log("Update wallet response:", response);
-            
-            setSuccess("Wallet updated successfully");
-        } catch (error: any) {
-            console.error("Failed to update wallet:", error.response || error);
-            setError(error.response?.data?.message || "Failed to update wallet");
+            await API.wallet.updateWallet({ wallet });
+            setError(null);
+            // Optionally, show a success message
+        } catch (error) {
+            console.error("Failed to update wallet");
+            setError("Failed to update wallet");
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <div className="max-w-md mx-auto p-4 space-y-4">
             <h1 className="text-2xl font-bold">Profile</h1>
-            {error && (
-                <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                    {error}
-                </div>
-            )}
-            {success && (
-                <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
-                    {success}
-                </div>
-            )}
+            {error && <p className="text-red-500">{error}</p>}
             <form onSubmit={handleSubmit} className="space-y-4">
                 <input
                     type="text"
@@ -59,11 +52,12 @@ const Profile = () => {
                     onChange={(e) => setWallet(e.target.value)}
                     className="w-full p-2 border rounded"
                 />
-                <button 
-                    type="submit" 
-                    className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-blue-500 text-white p-2 rounded disabled:bg-blue-300"
                 >
-                    Update Wallet
+                    {loading ? "Updating..." : "Update Wallet"}
                 </button>
             </form>
         </div>

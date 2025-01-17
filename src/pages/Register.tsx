@@ -9,7 +9,8 @@ const Register = () => {
         password: "",
         confirmPassword: "",
     });
-    const [errors, setErrors] = useState<string | null>(null);
+    const [errors, setErrors] = useState<string[]>([]);
+    const [loading, setLoading] = useState<boolean>(false);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
@@ -19,17 +20,28 @@ const Register = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        // Clear previous errors
+        setErrors([]);
+
+        // Basic client-side validation
         if (formData.password !== formData.confirmPassword) {
-            setErrors("Passwords do not match.");
+            setErrors(["Passwords do not match."]);
             return;
         }
 
+        setLoading(true);
         try {
             const { email, password } = formData;
             await API.auth.register({ email, password });
             navigate("/login");
         } catch (error: any) {
-            setErrors(error.response?.data?.message || "Registration failed.");
+            setErrors([
+                error.response?.data?.message ||
+                error.message ||
+                "Registration failed.",
+            ]);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -37,9 +49,18 @@ const Register = () => {
         <div className="max-w-md mx-auto p-4 space-y-6">
             <h1 className="text-2xl font-bold text-center">Register</h1>
 
-            {errors && <div className="text-red-500">{errors}</div>}
+            {errors.length > 0 && (
+                <div className="space-y-2">
+                    {errors.map((error, index) => (
+                        <div key={index} className="text-red-500">
+                            {error}
+                        </div>
+                    ))}
+                </div>
+            )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Email */}
                 <div>
                     <label htmlFor="email" className="block font-medium mb-1">
                         Email
@@ -56,6 +77,7 @@ const Register = () => {
                     />
                 </div>
 
+                {/* Password */}
                 <div>
                     <label htmlFor="password" className="block font-medium mb-1">
                         Password
@@ -72,6 +94,7 @@ const Register = () => {
                     />
                 </div>
 
+                {/* Confirm Password */}
                 <div>
                     <label htmlFor="confirmPassword" className="block font-medium mb-1">
                         Confirm Password
@@ -88,11 +111,13 @@ const Register = () => {
                     />
                 </div>
 
+                {/* Submit Button */}
                 <button
                     type="submit"
-                    className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
+                    disabled={loading}
+                    className="w-full bg-blue-500 text-white py-2 rounded hover:bg-blue-600 disabled:bg-blue-300"
                 >
-                    Register
+                    {loading ? "Registering..." : "Register"}
                 </button>
             </form>
         </div>

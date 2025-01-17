@@ -12,7 +12,7 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api/v1'); // Ajoute un préfixe global aux routes
 
-  await app.listen(5000);
+  await app.listen(5001);
   console.log(`Application is running on: ${await app.getUrl()}`);
 }
 bootstrap();

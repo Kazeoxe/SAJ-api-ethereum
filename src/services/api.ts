@@ -6,7 +6,7 @@ const AuthAPI = axios.create({
 });
 
 const WalletAPI = axios.create({
-    baseURL: process.env.REACT_APP_WALLET_API_URL || "http://localhost:5000/api/v1/",
+    baseURL: process.env.REACT_APP_WALLET_API_URL || "http://localhost:5001/api/v1/",
     withCredentials: true,
 });
 
@@ -60,19 +60,19 @@ const addRefreshSubscriber = (callback: (token: string) => void) => {
 
                 try {
                     const { data } = await AuthAPI.post(
-                        "/auth/refresh",
+                        "/auth/refresh-token",
                         {},
                         { withCredentials: true }
                     );
 
                     const { accessToken } = data;
                     TokenService.setToken(accessToken);
-                    // 
+                    //
 
                     [AuthAPI, WalletAPI].forEach(instance => {
                         instance.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
                     });
-                    
+
                     onRefreshed(accessToken);
                     isRefreshing = false;
 
@@ -92,7 +92,7 @@ const addRefreshSubscriber = (callback: (token: string) => void) => {
 });
 
 const API = {
-    
+
     auth: {
         login: (data: any) => AuthAPI.post("/auth/login", data),
         register: (data: any) => AuthAPI.post("/auth/register", data),
@@ -100,13 +100,13 @@ const API = {
         refresh: () => AuthAPI.post("/auth/refresh"),
         logout: () => AuthAPI.delete("/logout"),
     },
-    
+
     wallet: {
         getWallet: () => WalletAPI.get("/wallet/get_wallet"),
         updateWallet: (data: any) => WalletAPI.put("/wallet/update_wallet", data),
         getBalanceHistory: () => WalletAPI.get("/wallet/balance-history")
     },
-    
+
     get: (url: string) => {
         if (url.startsWith("/auth")) return AuthAPI.get(url);
         return WalletAPI.get(url);
