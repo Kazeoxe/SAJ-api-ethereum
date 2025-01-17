@@ -11,6 +11,7 @@ import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.Optional;
 
 @Service
@@ -27,10 +28,12 @@ public class UserTokenService {
     public void createAndSaveRefreshToken(String refreshToken, User user) {
         removeOldUserTokens(user);
         UserToken userToken = new UserToken();
-        userToken.setRefreshToken(refreshToken);
         userToken.setUser(user);
         userToken.setCreationDate(jwtUtil.extractClaims(refreshToken).getIssuedAt());
         userToken.setExpirationDate(jwtUtil.extractClaims(refreshToken).getExpiration());
+
+        String hashedRefreshToken = jwtUtil.hashRefreshToken(refreshToken);
+        userToken.setRefreshToken(hashedRefreshToken);
 
         userTokenRepository.save(userToken);
     }
@@ -54,7 +57,16 @@ public class UserTokenService {
     }
 
     public boolean validateRefreshToken(String refreshToken, User user) {
-        Optional<UserToken> userToken = userTokenRepository.findByRefreshTokenAndUser(refreshToken, user);
-        return userToken.isPresent();
+        String hashedRefreshToken = jwtUtil.hashRefreshToken(refreshToken);
+        Optional<UserToken> userToken = userTokenRepository.findByRefreshTokenAndUser(hashedRefreshToken, user);
+
+        if (userToken.isPresent()) {
+            if (userToken.get().getExpirationDate().before(new Date())) {
+                userTokenRepository.delete(userToken.get());
+                return false;
+            }
+            return true;
+        }
+        return false;
     }
 }

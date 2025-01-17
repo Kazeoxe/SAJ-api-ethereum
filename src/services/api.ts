@@ -1,12 +1,12 @@
 import axios from "axios";
 
 const AuthAPI = axios.create({
-    baseURL: process.env.REACT_APP_AUTH_API_URL || "http://localhost:8080/",
+    baseURL: process.env.REACT_APP_AUTH_API_URL || "http://localhost:8080/api/v1",
     withCredentials: true,
 });
 
 const WalletAPI = axios.create({
-    baseURL: process.env.REACT_APP_WALLET_API_URL || "http://localhost:5000/api/v1/",
+    baseURL: process.env.REACT_APP_WALLET_API_URL || "http://localhost:5001/api/v1/",
     withCredentials: true,
 });
 
@@ -32,6 +32,7 @@ const addRefreshSubscriber = (callback: (token: string) => void) => {
     api.interceptors.request.use(
         (config) => {
             const token = TokenService.getToken();
+            console.log('Token:', token);
             if (token) {
                 config.headers.Authorization = `Bearer ${token}`;
             }
@@ -59,19 +60,19 @@ const addRefreshSubscriber = (callback: (token: string) => void) => {
 
                 try {
                     const { data } = await AuthAPI.post(
-                        "/auth/refresh",
+                        "/auth/refresh-token",
                         {},
                         { withCredentials: true }
                     );
 
                     const { accessToken } = data;
                     TokenService.setToken(accessToken);
-                    // 
+                    //
 
                     [AuthAPI, WalletAPI].forEach(instance => {
                         instance.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
                     });
-                    
+
                     onRefreshed(accessToken);
                     isRefreshing = false;
 
@@ -91,21 +92,21 @@ const addRefreshSubscriber = (callback: (token: string) => void) => {
 });
 
 const API = {
-    
+
     auth: {
         login: (data: any) => AuthAPI.post("/auth/login", data),
         register: (data: any) => AuthAPI.post("/auth/register", data),
         verifyEmail: (data: any) => AuthAPI.post("/auth/verify-email", data),
-        refresh: () => AuthAPI.post("/auth/refresh"),
-        logout: () => AuthAPI.delete("/auth/logout"),
+        refresh: () => AuthAPI.post("/auth/refresh-token"),
+        logout: () => AuthAPI.delete("/logout"),
     },
-    
+
     wallet: {
         getWallet: () => WalletAPI.get("/wallet/get_wallet"),
         updateWallet: (data: any) => WalletAPI.put("/wallet/update_wallet", data),
-        getWalletData: () => WalletAPI.get("/wallet/get_data"),
+        getBalanceHistory: () => WalletAPI.get("/wallet/balance-history")
     },
-    
+
     get: (url: string) => {
         if (url.startsWith("/auth")) return AuthAPI.get(url);
         return WalletAPI.get(url);
